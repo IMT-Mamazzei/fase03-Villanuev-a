@@ -3,44 +3,7 @@ package br.maua.cic303;
 import java_cup.runtime.*;
 
 parser code {:
-    // Construtor específico exigido pelo ValidadorFase3Test
-    public parser(Lexer lexer) {
-        super(new java_cup.runtime.Scanner() {
-            @Override
-            public Symbol next_token() throws java.lang.Exception {
-                Token t = lexer.yylex();
-                if (t == null) {
-                    return new Symbol(sym.EOF);
-                }
-                
-                // Mapeia o Enum Tag do seu Lexer para as constantes numéricas do sym do CUP
-                switch (t.tag) {
-                    case IF:       return new Symbol(sym.IF, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case THEN:     return new Symbol(sym.THEN, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case ELSE:     return new Symbol(sym.ELSE, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case WHILE:    return new Symbol(sym.WHILE, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case ID:       return new Symbol(sym.ID, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case NUMBER:   return new Symbol(sym.NUMBER, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case ASSIGN:   return new Symbol(sym.ASSIGN, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case ADD_OP:   return new Symbol(sym.ADD_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case MUL_OP:   return new Symbol(sym.MUL_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case REL_OP:   return new Symbol(sym.REL_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case LPAREN:   return new Symbol(sym.LPAREN, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case RPAREN:   return new Symbol(sym.RPAREN, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case LBRACE:   return new Symbol(sym.LBRACE, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case RBRACE:   return new Symbol(sym.RBRACE, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case SEMI:     return new Symbol(sym.SEMI, lexer.yyline, lexer.yycolumn, t.lexeme);
-                    case EOF:      return new Symbol(sym.EOF);
-                    default:       
-                        // Força um erro sintático se o Lexer retornar a Tag.ERROR ou algo inesperado
-                        return new Symbol(sym.error, lexer.yyline, lexer.yycolumn, t.lexeme);
-                }
-            }
-        });
-    }
-
     // Método chamado pelo CUP quando encontra um erro sintático
-    @Override
     public void syntax_error(Symbol cur_token) {
         throw new RuntimeException("Erro Sintático na linha " + cur_token.left + ", coluna " + cur_token.right);
     }
@@ -48,6 +11,7 @@ parser code {:
 
 /* ========================================================================= */
 /* DECLARAÇÃO DOS TOKENS (TERMINAIS)                                         */
+/* O CUP usará isso para gerar o sym.java que o seu Lexer precisa            */
 /* ========================================================================= */
 
 terminal IF, THEN, ELSE, WHILE;
@@ -67,9 +31,9 @@ non terminal expr;
 /* PRECEDÊNCIA E ASSOCIATIVIDADE                                             */
 /* ========================================================================= */
 
-precedence left REL_OP;
-precedence left ADD_OP;
-precedence left MUL_OP;
+/* TODO 1: Declare a precedência para resolver a ambiguidade matemática. */
+/* Dica: O operador mais embaixo tem a MAIOR precedência!                */
+/* precedence left ... ; */
 
 /* ========================================================================= */
 /* REGRAS DA GRAMÁTICA                                                       */
@@ -77,37 +41,21 @@ precedence left MUL_OP;
 
 start with program;
 
-program ::= stmt_list ;
+/* TODO 2: Como definir um programa que é uma lista de comandos? */
+program ::= /* Escreva a regra aqui */ ;
 
-/* Lista recursiva vazia para suportar blocos sem comandos internos e programas nulos */
-stmt_list ::= stmt_list stmt
-            | /* Vazio */
-            ;
+/* TODO 3: Como definir uma lista recursiva no BNF? */
+stmt_list ::= /* Escreva a regra aqui */ ;
 
-stmt ::= assign_stmt
-       | if_stmt
-       | while_stmt
-       | block_stmt
-       | null_stmt
-       ;
+/* TODO 4: Declaração dos comandos (assign, if, while, block, null) */
+stmt ::= /* Escreva a regra aqui */ ;
 
 assign_stmt ::= ID ASSIGN expr SEMI ;
 
-/* Tradução pura de BNF para estruturas opcionais (sem usar colchetes) */
-if_stmt ::= IF LPAREN expr RPAREN THEN block_stmt
-          | IF LPAREN expr RPAREN THEN block_stmt ELSE block_stmt
-          ;
+/* TODO 5: Implemente o IF, WHILE, BLOCO e NULL */
+/* if_stmt ::= ... */
 
-while_stmt ::= WHILE LPAREN expr RPAREN block_stmt ;
-
-block_stmt ::= LBRACE stmt_list RBRACE ;
-
-null_stmt ::= SEMI ;
-
+/* TODO 6: Regras de expressões (aritmética, relacional, etc) */
 expr ::= expr ADD_OP expr
-       | expr MUL_OP expr
-       | expr REL_OP expr
-       | LPAREN expr RPAREN
-       | NUMBER
-       | ID
+       /* Adicione MUL_OP, REL_OP, parenteses, NUMBER e ID */
        ;
