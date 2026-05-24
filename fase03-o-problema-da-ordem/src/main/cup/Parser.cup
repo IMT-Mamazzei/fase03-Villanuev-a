@@ -5,14 +5,52 @@ import java_cup.runtime.*;
 parser code {:
     // Método chamado pelo CUP quando encontra um erro sintático
     public void syntax_error(Symbol cur_token) {
-        // CORREÇÃO: Utilizando a CompilerException que o testador automático espera!
-        throw new CompilerException("Erro Sintático na linha " + cur_token.left + ", coluna " + cur_token.right);
+        throw new RuntimeException("Erro Sintático na linha " + cur_token.left + ", coluna " + cur_token.right);
+    }
+
+    // Integramos o seu Lexer personalizado ao ecossistema do CUP.
+    // Redefinimos o scan() para converter o seu 'Token' para o 'Symbol' que o CUP exige.
+    private Lexer lexer;
+
+    public parser(Lexer lexer) {
+        super();
+        this.lexer = lexer;
+    }
+
+    @Override
+    public Symbol scan() throws java.lang.Exception {
+        Token t = lexer.yylex();
+        if (t == null) {
+            return new Symbol(sym.EOF);
+        }
+
+        // Mapeia cada Tag do seu enum para as IDs numéricas geradas na classe sym pelo CUP
+        switch (t.tag) {
+            case IF:       return new Symbol(sym.IF, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case THEN:     return new Symbol(sym.THEN, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case ELSE:     return new Symbol(sym.ELSE, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case WHILE:    return new Symbol(sym.WHILE, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case ID:       return new Symbol(sym.ID, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case NUMBER:   return new Symbol(sym.NUMBER, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case ASSIGN:   return new Symbol(sym.ASSIGN, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case ADD_OP:   return new Symbol(sym.ADD_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case MUL_OP:   return new Symbol(sym.MUL_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case REL_OP:   return new Symbol(sym.REL_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case LPAREN:   return new Symbol(sym.LPAREN, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case RPAREN:   return new Symbol(sym.RPAREN, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case LBRACE:   return new Symbol(sym.LBRACE, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case RBRACE:   return new Symbol(sym.RBRACE, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case SEMI:     return new Symbol(sym.SEMI, lexer.yyline, lexer.yycolumn, t.lexeme);
+            case EOF:      return new Symbol(sym.EOF);
+            default:       
+                // Se cair em ERROR ou qualquer outra coisa estranha, manda um token inválido para estourar o erro sintático
+                return new Symbol(sym.error, lexer.yyline, lexer.yycolumn, t.lexeme);
+        }
     }
 :}
 
 /* ========================================================================= */
 /* DECLARAÇÃO DOS TOKENS (TERMINAIS)                                         */
-/* O CUP usará isso para gerar o sym.java que o seu Lexer precisa            */
 /* ========================================================================= */
 
 terminal IF, THEN, ELSE, WHILE;
@@ -32,7 +70,6 @@ non terminal expr;
 /* PRECEDÊNCIA E ASSOCIATIVIDADE                                             */
 /* ========================================================================= */
 
-/* O operador mais embaixo tem a MAIOR precedência! */
 precedence left REL_OP;
 precedence left ADD_OP;
 precedence left MUL_OP;
@@ -43,16 +80,13 @@ precedence left MUL_OP;
 
 start with program;
 
-/* Um programa é composto por uma lista de comandos */
 program ::= stmt_list ;
 
-/* CORREÇÃO: Lista recursiva que PERMITE ser vazia (Produção Epsilon). 
-   Isso resolve o "Teste 05 - Bloco Vazio" e permite arquivos sem código. */
+/* Lista de comandos que aceita recursão à esquerda e pode ser vazia */
 stmt_list ::= stmt_list stmt
             | /* Vazio */
             ;
 
-/* Declaração dos comandos possíveis */
 stmt ::= assign_stmt
        | if_stmt
        | while_stmt
@@ -62,20 +96,16 @@ stmt ::= assign_stmt
 
 assign_stmt ::= ID ASSIGN expr SEMI ;
 
-/* IF com e sem o ELSE (Substituindo os colchetes do EBNF) */
 if_stmt ::= IF LPAREN expr RPAREN THEN block_stmt
           | IF LPAREN expr RPAREN THEN block_stmt ELSE block_stmt
           ;
 
 while_stmt ::= WHILE LPAREN expr RPAREN block_stmt ;
 
-/* Como a nossa stmt_list agora pode ser vazia, essa regra única já cobre 
-   tanto os blocos cheios quanto os blocos vazios { } perfeitamente. */
 block_stmt ::= LBRACE stmt_list RBRACE ;
 
 null_stmt ::= SEMI ;
 
-/* Regras de expressões com precedência automática baseada nas diretivas no topo */
 expr ::= expr ADD_OP expr
        | expr MUL_OP expr
        | expr REL_OP expr
