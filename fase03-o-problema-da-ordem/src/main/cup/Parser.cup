@@ -3,49 +3,46 @@ package br.maua.cic303;
 import java_cup.runtime.*;
 
 parser code {:
+    // Construtor específico exigido pelo ValidadorFase3Test
+    public parser(Lexer lexer) {
+        super(new java_cup.runtime.Scanner() {
+            @Override
+            public Symbol next_token() throws java.lang.Exception {
+                Token t = lexer.yylex();
+                if (t == null) {
+                    return new Symbol(sym.EOF);
+                }
+                
+                // Mapeia o Enum Tag do seu Lexer para as constantes numéricas do sym do CUP
+                switch (t.tag) {
+                    case IF:       return new Symbol(sym.IF, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case THEN:     return new Symbol(sym.THEN, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case ELSE:     return new Symbol(sym.ELSE, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case WHILE:    return new Symbol(sym.WHILE, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case ID:       return new Symbol(sym.ID, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case NUMBER:   return new Symbol(sym.NUMBER, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case ASSIGN:   return new Symbol(sym.ASSIGN, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case ADD_OP:   return new Symbol(sym.ADD_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case MUL_OP:   return new Symbol(sym.MUL_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case REL_OP:   return new Symbol(sym.REL_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case LPAREN:   return new Symbol(sym.LPAREN, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case RPAREN:   return new Symbol(sym.RPAREN, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case LBRACE:   return new Symbol(sym.LBRACE, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case RBRACE:   return new Symbol(sym.RBRACE, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case SEMI:     return new Symbol(sym.SEMI, lexer.yyline, lexer.yycolumn, t.lexeme);
+                    case EOF:      return new Symbol(sym.EOF);
+                    default:       
+                        // Força um erro sintático se o Lexer retornar a Tag.ERROR ou algo inesperado
+                        return new Symbol(sym.error, lexer.yyline, lexer.yycolumn, t.lexeme);
+                }
+            }
+        });
+    }
+
     // Método chamado pelo CUP quando encontra um erro sintático
+    @Override
     public void syntax_error(Symbol cur_token) {
         throw new RuntimeException("Erro Sintático na linha " + cur_token.left + ", coluna " + cur_token.right);
-    }
-
-    // Integramos o seu Lexer personalizado ao ecossistema do CUP.
-    // Redefinimos o scan() para converter o seu 'Token' para o 'Symbol' que o CUP exige.
-    private Lexer lexer;
-
-    public parser(Lexer lexer) {
-        super();
-        this.lexer = lexer;
-    }
-
-    @Override
-    public Symbol scan() throws java.lang.Exception {
-        Token t = lexer.yylex();
-        if (t == null) {
-            return new Symbol(sym.EOF);
-        }
-
-        // Mapeia cada Tag do seu enum para as IDs numéricas geradas na classe sym pelo CUP
-        switch (t.tag) {
-            case IF:       return new Symbol(sym.IF, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case THEN:     return new Symbol(sym.THEN, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case ELSE:     return new Symbol(sym.ELSE, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case WHILE:    return new Symbol(sym.WHILE, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case ID:       return new Symbol(sym.ID, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case NUMBER:   return new Symbol(sym.NUMBER, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case ASSIGN:   return new Symbol(sym.ASSIGN, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case ADD_OP:   return new Symbol(sym.ADD_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case MUL_OP:   return new Symbol(sym.MUL_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case REL_OP:   return new Symbol(sym.REL_OP, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case LPAREN:   return new Symbol(sym.LPAREN, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case RPAREN:   return new Symbol(sym.RPAREN, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case LBRACE:   return new Symbol(sym.LBRACE, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case RBRACE:   return new Symbol(sym.RBRACE, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case SEMI:     return new Symbol(sym.SEMI, lexer.yyline, lexer.yycolumn, t.lexeme);
-            case EOF:      return new Symbol(sym.EOF);
-            default:       
-                // Se cair em ERROR ou qualquer outra coisa estranha, manda um token inválido para estourar o erro sintático
-                return new Symbol(sym.error, lexer.yyline, lexer.yycolumn, t.lexeme);
-        }
     }
 :}
 
@@ -82,7 +79,7 @@ start with program;
 
 program ::= stmt_list ;
 
-/* Lista de comandos que aceita recursão à esquerda e pode ser vazia */
+/* Lista recursiva vazia para suportar blocos sem comandos internos e programas nulos */
 stmt_list ::= stmt_list stmt
             | /* Vazio */
             ;
@@ -96,6 +93,7 @@ stmt ::= assign_stmt
 
 assign_stmt ::= ID ASSIGN expr SEMI ;
 
+/* Tradução pura de BNF para estruturas opcionais (sem usar colchetes) */
 if_stmt ::= IF LPAREN expr RPAREN THEN block_stmt
           | IF LPAREN expr RPAREN THEN block_stmt ELSE block_stmt
           ;
