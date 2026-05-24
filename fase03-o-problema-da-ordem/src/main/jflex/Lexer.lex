@@ -7,7 +7,7 @@ import java_cup.runtime.Symbol; // Importação necessária para o CUP
 %class Lexer
 %public
 %unicode
-%cup       // <-- CRÍTICO: Esta diretiva ativa a integração com o CUP
+%cup       // <-- CRÍTICO: Ativa a integração nativa com o CUP e muda o tipo de retorno para Symbol
 %line
 %column
 
@@ -23,72 +23,79 @@ import java_cup.runtime.Symbol; // Importação necessária para o CUP
 %}
 
 /* ========================================================================= */
-/* MACROS (Expressões Regulares Auxiliares)                                  */
+/* MACROS                                                                    */
 /* ========================================================================= */
 LineTerminator = \r|\n|\r\n
 WhiteSpace     = {LineTerminator} | [ \t\f]
 
-/* Número (Notação de Engenharia) */
 Number = [0-9]+(\.[0-9]+)?([Ee][+-]?[0-9]+)?
 
-/* Identificador (Máximo de 32 caracteres) */
 Letter = [a-zA-Z]
 Digit  = [0-9]
 Identifier = {Letter}({Letter}|{Digit}|_){0,31}
 
-/* Identificador gigante (Mais de 32 caracteres) para capturar o erro léxico */
-OversizedIdentifier = {Letter}({Letter}|{Digit}|_){32,}
-
 %%
-/* ========================================================================= */
-/* REGRAS LÉXICAS                                                            */
-/* ========================================================================= */
 
 <YYINITIAL> {
-    
-    /* Regra para ignorar espaços em branco */
+
+    /* Ignorar espaços */
     {WhiteSpace}    { /* Não faz nada */ }
 
-    /* Palavras Reservadas */
+    /* ========================= */
+    /* PALAVRAS RESERVADAS       */
+    /* ========================= */
     "if"            { return symbol(sym.IF); }
     "then"          { return symbol(sym.THEN); }
     "else"          { return symbol(sym.ELSE); }
     "while"         { return symbol(sym.WHILE); }
 
-    /* Pontuação */
+    /* ========================= */
+    /* PONTUAÇÃO                 */
+    /* ========================= */
     "("             { return symbol(sym.LPAREN); }
     ")"             { return symbol(sym.RPAREN); }
     "{"             { return symbol(sym.LBRACE); }
     "}"             { return symbol(sym.RBRACE); }
     ";"             { return symbol(sym.SEMI); }
 
-    /* Operadores Relacionais e Atribuição */
-    /* ATENÇÃO: Operadores duplos vêm ANTES para não serem cortados pela metade */
+    /* ========================= */
+    /* OPERADORES RELACIONAIS    */
+    /* ========================= */
     "=="            { return symbol(sym.REL_OP, yytext()); }
     "!="            { return symbol(sym.REL_OP, yytext()); }
     "<="            { return symbol(sym.REL_OP, yytext()); }
     ">="            { return symbol(sym.REL_OP, yytext()); }
     "<"             { return symbol(sym.REL_OP, yytext()); }
     ">"             { return symbol(sym.REL_OP, yytext()); }
+
+    /* ========================= */
+    /* ATRIBUIÇÃO                */
+    /* ========================= */
     "="             { return symbol(sym.ASSIGN); }
 
-    /* Operadores Matemáticos */
-    "+"             { return symbol(sym.ADD_OP, yytext()); }
-    "-"             { return symbol(sym.ADD_OP, yytext()); }
-    "*"             { return symbol(sym.MUL_OP, yytext()); }
-    "/"             { return symbol(sym.MUL_OP, yytext()); }
-    "%"             { return symbol(sym.MUL_OP, yytext()); }
+    /* ========================= */
+    /* OPERADORES MATEMÁTICOS    */
+    /* ========================= */
+    "+" | "-"       { return symbol(sym.ADD_OP, yytext()); }
+    "*" | "/" | "%" { return symbol(sym.MUL_OP, yytext()); }
 
-    /* Regras para as Macros */
+    /* ========================= */
+    /* IDENTIFICADORES E NÚMEROS */
+    /* ========================= */
     {Identifier}    { return symbol(sym.ID, yytext()); }
     {Number}        { return symbol(sym.NUMBER, yytext()); }
 
-    /* Identificadores grandes demais (Captura o erro) */
-    {OversizedIdentifier} { throw new RuntimeException("Erro Léxico: Identificador gigante -> " + yytext()); }
+    /* ERRO: identificador > 32 chars */
+    /* Consome os 32 caracteres excedentes mais o restante do nome inválido */
+    {Letter}({Letter}|{Digit}|_){32}({Letter}|{Digit}|_)* {
+        return symbol(sym.error, "Erro Léxico: Identificador ultrapassou 32 caracteres -> " + yytext());
+    }
 
-    /* Fallback: Qualquer outro caractere não reconhecido gera um Erro */
-    .   { throw new RuntimeException("Erro Léxico: Caractere Ilegal -> " + yytext()); }
+    /* ERRO genérico */
+    . {
+        return symbol(sym.error, "Erro Léxico: Caractere Ilegal -> " + yytext());
+    }
 }
 
-/* Regra para o Final do Arquivo */
-<<EOF>>             { return symbol(sym.EOF); }
+/* EOF */
+<<EOF>> { return symbol(sym.EOF); }
